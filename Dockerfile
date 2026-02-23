@@ -15,13 +15,7 @@ WORKDIR /app
 # 复制 Cargo 配置文件
 COPY Cargo.toml Cargo.lock ./
 
-# 创建一个虚拟的 src 目录来缓存依赖
-RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
-
-# 复制实际的源代码
+# 复制源代码
 COPY src ./src
 
 # 构建应用
