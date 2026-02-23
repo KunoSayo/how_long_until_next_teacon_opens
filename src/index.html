@@ -178,9 +178,7 @@
     <script>
         let isLoading = false;
 
-        // 页面加载时获取当前数据
-        window.addEventListener('DOMContentLoaded', loadData);
-
+        // 立即执行的数据加载函数
         async function loadData() {
             try {
                 const response = await fetch('/api/data');
@@ -303,6 +301,16 @@
             setTimeout(() => {
                 messageDiv.style.display = 'none';
             }, 5000);
+        }
+
+        // 页面加载完成后立即加载数据
+        // 使用多种方式确保一定会执行
+        if (document.readyState === 'loading') {
+            // 文档还在加载中，等待 DOMContentLoaded
+            document.addEventListener('DOMContentLoaded', loadData);
+        } else {
+            // 文档已经加载完成，立即执行
+            loadData();
         }
 
         // 每 30 秒刷新一次数据
