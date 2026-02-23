@@ -85,21 +85,53 @@ async fn index(
         .body(html)
 }
 
-/// 获取当前数据 API
-async fn get_data(db: web::Data<Arc<Database>>) -> impl Responder {
-    match db.get_week_count().await {
-        Ok(week_count) => HttpResponse::Ok().json(ApiResponse {
-            success: true,
-            week_count,
-            message: None,
-        }),
+/// 获取当前数据 API（带 IP 检查，如果当天没有记录则自动增加一周）
+async fn get_data(
+    db: web::Data<Arc<Database>>,
+    req: HttpRequest,
+    connection_info: actix_web::dev::ConnectionInfo,
+) -> impl Responder {
+    let client_ip = get_client_ip(&req, &connection_info);
+    log::info!("获取数据请求，来自 IP: {}", client_ip);
+
+    // 尝试增加周数（带 IP 检查）
+    match db.increment_week_with_ip_check(client_ip.clone()).await {
+        Ok(_) => {
+            // 无论是否增加，都返回当前周数
+            match db.get_week_count().await {
+                Ok(week_count) => {
+                    log::info!("返回当前周数: {}", week_count);
+                    HttpResponse::Ok().json(ApiResponse {
+                        success: true,
+                        week_count,
+                        message: None,
+                    })
+                }
+                Err(e) => {
+                    log::error!("获取数据失败: {}", e);
+                    HttpResponse::InternalServerError().json(ApiResponse {
+                        success: false,
+                        week_count: 0,
+                        message: Some("获取数据失败".to_string()),
+                    })
+                }
+            }
+        }
         Err(e) => {
-            log::error!("获取数据失败: {}", e);
-            HttpResponse::InternalServerError().json(ApiResponse {
-                success: false,
-                week_count: 0,
-                message: Some("获取数据失败".to_string()),
-            })
+            log::error!("增加周数失败: {}", e);
+            // 即使增加失败，也尝试返回当前周数
+            match db.get_week_count().await {
+                Ok(week_count) => HttpResponse::Ok().json(ApiResponse {
+                    success: true,
+                    week_count,
+                    message: None,
+                }),
+                Err(_) => HttpResponse::InternalServerError().json(ApiResponse {
+                    success: false,
+                    week_count: 0,
+                    message: Some("操作失败".to_string()),
+                }),
+            }
         }
     }
 }
