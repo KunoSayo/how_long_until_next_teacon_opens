@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacon 开放倒计时</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 30px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-text {
+            font-size: 1.5rem;
+            color: #495057;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .date-text {
+            font-size: 1.2rem;
+            color: #6c757d;
+            font-weight: 400;
+        }
+
+        .button-container {
+            margin-top: 30px;
+        }
+
+        #incrementButton {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #incrementButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #incrementButton:active {
+            transform: translateY(0);
+        }
+
+        #incrementButton:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .info-text {
+                font-size: 1.2rem;
+            }
+
+            .date-text {
+                font-size: 1rem;
+            }
+
+            #incrementButton {
+                padding: 12px 30px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Teacon 开放倒计时</h1>
+
+        <div class="info-box">
+            <div class="info-text">
+                当前时间：<span id="weekCount">加载中...</span>
+            </div>
+            <div class="date-text" id="dateDisplay">
+                计算中...
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button id="incrementButton" onclick="incrementWeek()">
+                增加一周
+            </button>
+        </div>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        let isLoading = false;
+
+        // 页面加载时获取当前数据
+        window.addEventListener('DOMContentLoaded', loadData);
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/data');
+                if (!response.ok) {
+                    throw new Error('获取数据失败');
+                }
+                const data = await response.json();
+                updateDisplay(data.week_count);
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showError('加载数据失败，请刷新页面重试');
+            }
+        }
+
+        function updateDisplay(weekCount) {
+            document.getElementById('weekCount').textContent = `+${weekCount} 周`;
+
+            // 使用 BigInt 处理大数，避免溢出
+            // 基准时间：Unix 时间戳 0 (1970-01-01 00:00:00 UTC)
+            const baseTimestamp = 0n;
+
+            // 每周的秒数 (7 * 24 * 60 * 60 = 604800)
+            const secondsPerWeek = 604800n;
+
+            // 使用 BigInt 计算总秒数
+            const weekCountBigInt = BigInt(weekCount);
+            const weeksInSeconds = weekCountBigInt * secondsPerWeek;
+            const targetTimestamp = baseTimestamp + weeksInSeconds;
+
+            // JavaScript Date 支持的最大时间戳（约 275760 年）
+            // 如果超过这个值，我们需要取模来模拟溢出
+            const maxSafeTimestamp = 8640000000000000n; // 毫秒
+
+            // 转换为毫秒
+            let targetTimestampMs = targetTimestamp * 1000n;
+
+            // 处理溢出：使用取模运算
+            // 计算一个合理的周期，比如 10000 年的毫秒数
+            const cycleMs = 1000n * 60n * 60n * 24n * 365n * 10000n;
+            targetTimestampMs = ((targetTimestampMs % cycleMs) + cycleMs) % cycleMs;
+
+            // 转换为 Number (此时已经确保在安全范围内)
+            const targetDate = new Date(Number(targetTimestampMs));
+
+            // 格式化日期显示
+            const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZone: 'UTC'
+            };
+
+            document.getElementById('dateDisplay').textContent =
+                `目标时间：${targetDate.toLocaleString('en-US', options)} UTC`;
+        }
+
+        async function incrementWeek() {
+            if (isLoading) return;
+
+            const button = document.getElementById('incrementButton');
+            const originalText = button.innerHTML;
+            const messageDiv = document.getElementById('message');
+
+            isLoading = true;
+            button.disabled = true;
+            button.innerHTML = '<span class="loading"></span>处理中...';
+            messageDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/increment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('请求失败');
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    updateDisplay(result.week_count);
+                    showSuccess('成功增加一周！');
+                } else {
+                    showError(result.message || '操作失败，请稍后再试');
+                }
+            } catch (error) {
+                console.error('请求失败:', error);
+                showError('网络错误，请稍后重试');
+            } finally {
+                isLoading = false;
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+        }
+
+        function showSuccess(message) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = 'message success';
+
+            // 3 秒后自动隐藏
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function showError(message) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = 'message error';
+
+            // 5 秒后自动隐藏
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // 每 30 秒刷新一次数据
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>

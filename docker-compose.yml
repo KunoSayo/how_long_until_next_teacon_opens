@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  teacon-counter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: teacon-counter
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # 持久化数据存储
+      - teacon-data:/data
+    environment:
+      - RUST_LOG=info
+      - DB_PATH=/data/db
+      - BIND_ADDRESS=0.0.0.0:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  teacon-data:
+    driver: local
