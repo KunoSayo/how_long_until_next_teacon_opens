@@ -34,7 +34,13 @@
         h1 {
             color: #333;
             font-size: 2rem;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
         }
 
         .info-box {
@@ -156,6 +162,7 @@
 <body>
     <div class="container">
         <h1>🎮 Teacon 开放倒计时</h1>
+        <p class="subtitle">每天第一次访问会 +1 周</p>
 
         <div class="info-box">
             <div class="info-text">
@@ -216,8 +223,8 @@
             let targetTimestampMs = targetTimestamp * 1000n;
 
             // 处理溢出：使用取模运算
-            // 计算一个合理的周期，比如 10000 年的毫秒数
-            const cycleMs = 1000n * 60n * 60n * 24n * 365n * 10000n;
+            // 计算一个合理的周期，比如 100 年的毫秒数
+            const cycleMs = 1000n * 60n * 60n * 24n * 365n * 100n;
             targetTimestampMs = ((targetTimestampMs % cycleMs) + cycleMs) % cycleMs;
 
             // 转换为 Number (此时已经确保在安全范围内)
